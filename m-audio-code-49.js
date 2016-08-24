@@ -18,6 +18,15 @@ var TRANSPORT = {
     RECORD : 95
 };
 
+var CHANNEL_BUTTON = {
+    ARM0 : 0,
+    SOLO0 : 8,
+    MUTE0 : 16,
+    SELECT0 : 24
+};
+
+var numSendPages = 5;
+
 function init() {
     host.getMidiInPort(0).setMidiCallback(onMidi);
     host.getMidiInPort(0).setSysexCallback(onSysex);
@@ -25,6 +34,7 @@ function init() {
     generic.setShouldConsumeEvents(false);
 
     transport = host.createTransport();
+    trackBank = host.createTrackBankSection(8, numSendPages, 99);
 
     // Map CC 20 - 27 to device parameters
     cursorDevice = host.createCursorDeviceSection(8);
@@ -74,6 +84,7 @@ function onMidi(status, data1, data2) {
     // m-audio code series uses mackie/hui for transport buttons
     if (isNoteOn(status)) {
 	if (data2 > 0) { // on key press
+	    // main transport
 	    switch (data1) {
 	    case TRANSPORT.PLAY:
 		transport.play();
@@ -91,6 +102,24 @@ function onMidi(status, data1, data2) {
                 transport.fastForward();
 		break;
             }
+
+	    // track buttons
+	    if (data1 >= 0 && data1 <= 7) { // is one of the arm buttons pressed
+		var index = data1 - CHANNEL_BUTTON.ARM0; //which arm button is pressed
+		trackBank.getTrack(index).getArm().toggle(); // tell the application to toggle the state of the corresponding arm button
+	    }
+	    else if (data1 >= 8 && data1 <= 15) { // is one of the solo buttons pressed
+		var index = data1 - CHANNEL_BUTTON.SOLO0; //which solo button is pressed
+		trackBank.getTrack(index).getSolo().toggle(); // tell the application to toggle the state of the corresponding solo button
+	    }
+	    else if (data1 >= 16 && data1 <= 23) { // is one of the mute buttons pressed{
+		var index = data1 - CHANNEL_BUTTON.MUTE0; //which mute button is pressed
+		trackBank.getTrack(index).getMute().toggle(); // tell the application to toggle the state of the corresponding mute button
+	    }
+	    else if (data1 >= 24 && data1 <= 31) { // is a select button pressed
+		var index = data1 - CHANNEL_BUTTON.SELECT0; //which select button is pressed
+		trackBank.getTrack(index).select(); // tell the application to toggle the state of the corresponding arm button
+	    }
 	}
     }
 }
